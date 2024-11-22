@@ -4,77 +4,93 @@ import os
 from dotenv import load_dotenv
 import asyncio
 from pymongo.mongo_client import MongoClient
-import json
 
 # Load environment variables
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-
-# Get credentials
 MONGO_USERNAME = os.getenv("MONGO_USERNAME")
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
 
-# Load MongoDB URI
-MONGO_URI = f"mongodb+srv://{MONGO_USERNAME}:{MONGO_PASSWORD}@kohii.763qm.mongodb.net/?retryWrites=true&w=majority&appName=kohii"
+# Construct MongoDB URI
+MONGO_URI = (
+    f"mongodb+srv://{MONGO_USERNAME}:{MONGO_PASSWORD}@kohii.763qm.mongodb.net/"
+    "?retryWrites=true&w=majority&appName=kohii"
+)
 
-
+# Initialize MongoDB client and database
 mongo_client = MongoClient(MONGO_URI)
-db = mongo_client["kohii"]  # database name
+db = mongo_client["kohii"]  # Database name
 
-# Intents
+# Intents for the bot
 intents = discord.Intents.default()
 intents.message_content = True
 
-# Set up the bot
+# Set up the bot instance
 bot = commands.Bot(command_prefix='/', intents=intents)
 
-# Define the shutdown command
+# Graceful shutdown command
 @bot.tree.command(name="shutdown", description="Gracefully shuts down the bot.")
 async def shutdown(interaction: discord.Interaction):
-    """Shuts down the bot."""
-    if interaction.user.id == 696391065317408778:  # Replace with your Discord user ID
+    """Command to shut down the bot (restricted to bot owner)."""
+    bot_owner_id = 696391065317408778  # Replace with your Discord user ID
+    if interaction.user.id == bot_owner_id:
         await interaction.response.send_message("Shutting down the bot. Goodbye! 👋", ephemeral=True)
         await bot.close()  # Gracefully close the bot connection
     else:
-        await interaction.response.send_message("You do not have permission to shut down the bot.", ephemeral=True)
+        await interaction.response.send_message(
+            "You do not have permission to shut down the bot.", ephemeral=True
+        )
 
+# Event: Triggered when the bot is ready
 @bot.event
 async def on_ready():
-    """Triggered when the bot is ready."""
-    print(f'Logged in as {bot.user}!')  # Confirm the bot is online
+    """Log when the bot is ready and sync slash commands."""
+    print(f"Logged in as {bot.user}! Bot is ready.")
     try:
-        await bot.tree.sync()  # Sync slash commands
-        print("Slash commands synced!")
+        synced_commands = await bot.tree.sync()  # Sync slash commands with Discord API
+        print(f"Successfully synced {len(synced_commands)} slash command(s).")
     except Exception as e:
         print(f"Error syncing commands: {e}")
 
+# Event: Triggered when the bot disconnects
 @bot.event
 async def on_disconnect():
-    """Triggered when the bot disconnects."""
+    """Close MongoDB connection when the bot disconnects."""
     mongo_client.close()
     print("MongoDB connection closed.")
 
-@bot.tree.command(name="ping", description="Check the bot's latency")
-async def ping_slash_command(interaction: discord.Interaction):
-    """Simple ping command to check bot latency."""
-    latency = round(bot.latency * 1000)
-    await interaction.response.send_message(f"Pong! {latency}ms")
-
-# Load the Pomodoro Cog
+# Load bot cogs
 async def load_cogs():
-    """Load all the bot's cogs."""
-    try:
-        await bot.load_extension("cogs.pomodoro")
-        await bot.load_extension("cogs.auto_responses")
-        print("Cogs loaded successfully!")
-    except Exception as e:
-        print(f"Error loading cogs: {e}")
+    """Dynamically load bot cogs."""
+    cog_list = [
+        "cogs.ping",
+        "cogs.pomodoro",
+        "cogs.auto_responses",
+    ]
+    for cog in cog_list:
+        try:
+            await bot.load_extension(cog)
+            print(f"Successfully loaded cog: {cog}")
+        except Exception as e:
+            print(f"Error loading cog {cog}: {e}")
 
+# Main function to start the bot
 async def main():
-    """Run the bot."""
-    async with bot:
-        await load_cogs()
-        await bot.start(TOKEN)
+    """Main entry point to run the bot."""
+    try:
+        # Load cogs before starting the bot
+        async with bot:
+            await load_cogs()
+            await bot.start(TOKEN)
+    except discord.LoginFailure:
+        print("Invalid token. Please check your DISCORD_TOKEN in the environment variables.")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+    finally:
+        # Ensure MongoDB connection is closed on exit
+        mongo_client.close()
+        print("MongoDB connection closed on exit.")
 
-# Start the bot
-asyncio.run(main())
+# Run the bot
+if __name__ == "__main__":
+    asyncio.run(main())
