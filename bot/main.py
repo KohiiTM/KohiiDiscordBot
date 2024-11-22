@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 import asyncio
 from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 
 # Load environment variables
 load_dotenv()
@@ -19,7 +20,13 @@ MONGO_URI = (
 
 # Initialize MongoDB client and database
 mongo_client = MongoClient(MONGO_URI)
-db = mongo_client["kohii"]  # Database name
+
+# Test the connection
+try:
+    mongo_client.admin.command('ping')
+    print("Pinged your deployment. You successfully connected to MongoDB!")
+except Exception as e:
+    print(f"Failed to connect to MongoDB: {e}")
 
 # Intents for the bot
 intents = discord.Intents.default()
@@ -27,6 +34,10 @@ intents.message_content = True
 
 # Set up the bot instance
 bot = commands.Bot(command_prefix='/', intents=intents)
+
+# Attach MongoDB client to the bot
+bot.mongo_client = mongo_client
+
 
 # Graceful shutdown command
 @bot.tree.command(name="shutdown", description="Gracefully shuts down the bot.")
@@ -66,6 +77,8 @@ async def load_cogs():
         "cogs.ping",
         "cogs.pomodoro",
         "cogs.auto_responses",
+        "cogs.chat_logs",
+        
     ]
     for cog in cog_list:
         try:
