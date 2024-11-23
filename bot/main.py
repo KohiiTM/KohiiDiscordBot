@@ -78,6 +78,7 @@ async def load_cogs():
         "cogs.pomodoro",
         "cogs.auto_responses",
         "cogs.chat_logs",
+        "cogs.avatar",
         
     ]
     for cog in cog_list:

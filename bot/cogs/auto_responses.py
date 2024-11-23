@@ -42,5 +42,6 @@ class AutoResponses(commands.Cog):
         await self.bot.process_commands(message)
 
 # Setup function to load the cog
-async def setup(bot):
+async def setup(bot: commands.Bot):
+ 
     await bot.add_cog(AutoResponses(bot))
