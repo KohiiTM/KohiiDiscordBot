@@ -15,12 +15,19 @@ class AutoResponses(commands.Cog):
             return
 
         # Define a dictionary with keywords and list of potential responses
-        responses = {
-            "val": [
+        response_groups = {
+            ("val", "valorant"): [
                 "https://tenor.com/view/choso-jjk-choso-choso-panic-insane-choso-anime-insane-gif-5693401929827560865",
                 "nah",
                 "https://tenor.com/view/valorant-nerd-brimstone-viper-omen-gif-9861738447246078182",
                 "RAHHHHHHHHH",
+            ],
+            ("hello", "hi"): [
+                "wAZAAAAAAAAAAAAAA",
+                ":man_with_probing_cane::skin-tone-3:",
+                "https://tenor.com/view/anime-lolis-cute-dancing-girl-gif-25488979",
+                "yo",
+            
             ],
         }
 
