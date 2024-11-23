@@ -32,7 +32,7 @@ class AutoResponses(commands.Cog):
         }
 
         # Check if any keyword is in the message content
-        for key, possible_responses in responses.items():
+        for key, possible_responses in response_groups.items():
             if key in message.content.lower():
                 response = random.choice(possible_responses)  # Randomly pick a response
                 await message.channel.send(response)
