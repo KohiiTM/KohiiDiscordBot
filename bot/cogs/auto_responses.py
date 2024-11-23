@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import random  # Import the random module for random responses
 
 class AutoResponses(commands.Cog):
     """Cog for handling auto-responses."""
@@ -8,25 +9,27 @@ class AutoResponses(commands.Cog):
         self.bot = bot  # Correctly assign the bot instance
 
     @commands.Cog.listener()
-    async def on_message(self, message):
+    async def on_message(self, message: discord.Message):
         # Ignore messages from the bot itself
         if message.author == self.bot.user:
             return
 
-        # Example 1: Respond to "hello" in chat
-        if "valorant" in message.content.lower():
-            await message.channel.send("https://tenor.com/view/choso-jjk-choso-choso-panic-insane-choso-anime-insane-gif-5693401929827560865")
+        # Define a dictionary with keywords and list of potential responses
+        responses = {
+            "val": [
+                "https://tenor.com/view/choso-jjk-choso-choso-panic-insane-choso-anime-insane-gif-5693401929827560865",
+                "nah",
+                "https://tenor.com/view/valorant-nerd-brimstone-viper-omen-gif-9861738447246078182",
+                "RAHHHHHHHHH",
+            ],
+        }
 
-        if "hello" in message.content.lower():
-            await message.channel.send(f"Yo, {message.author.display_name}!")
-
-        # Example 2: Respond to "how are you?"
-        if "how are you" in message.content.lower():
-            await message.channel.send("good.")
-
-        # Example 3: Respond to "goodbye"
-        if "goodbye" in message.content.lower():
-            await message.channel.send("Peace!")
+        # Check if any keyword is in the message content
+        for key, possible_responses in responses.items():
+            if key in message.content.lower():
+                response = random.choice(possible_responses)  # Randomly pick a response
+                await message.channel.send(response)
+                return  # Stop after the first match
 
         # Allow command processing to continue
         await self.bot.process_commands(message)
