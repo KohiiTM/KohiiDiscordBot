@@ -50,6 +50,45 @@ class Pomodoro(commands.Cog):
         session = self.active_sessions[user_id]
         await session.skip_phase()
         await interaction.response.send_message("Skipped to the next phase!", ephemeral=True)
+        
+    @discord.app_commands.command(name="session_history", description="View your Pomodoro session history.")
+    async def session_history(self, interaction: discord.Interaction, limit: int = 5):
+        """
+        Command to display a user's Pomodoro session history.
+        """
+        user_id = interaction.user.id
+        collection = self.bot.mongo_client["kohii"]["pomodoro"]
+
+        # Query the database for the user's sessions, sorted by timestamp
+        sessions = list(
+            collection.find({"user_id": user_id}).sort("timestamp", -1).limit(limit)
+        )
+
+        # Check if the user has any recorded sessions
+        if not sessions:
+            await interaction.response.send_message("No session history found for your account.", ephemeral=True)
+            return
+
+        # Build the response
+        embed = discord.Embed(
+            title="Pomodoro Session History",
+            description=f"Here are your last {len(sessions)} Pomodoro sessions:",
+            color=discord.Color.blue(),
+        )
+
+        for session in sessions:
+            # Format the session data
+            timestamp = session["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+            work_sessions = session["work_sessions_completed"]
+            embed.add_field(
+                name=f"Session on {timestamp}",
+                value=f"Work Sessions Completed: **{work_sessions}**",
+                inline=False,
+            )
+
+        # Send the embed as a response
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        
 
 
 class PomodoroSession:
