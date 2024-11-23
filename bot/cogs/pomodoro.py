@@ -1,15 +1,8 @@
 import discord
 from discord.ext import commands
 from discord.ui import Button, View
-from asyncio import sleep
 from pymongo import MongoClient
-
-# MongoDB setup
-MONGO_URI = "your_mongo_uri_here"  # Replace with your MongoDB URI
-DATABASE_NAME = "pomodoro_db"  # Replace with your database name
-client = MongoClient(MONGO_URI)
-db = client[DATABASE_NAME]
-sessions_collection = db["sessions"]  # Replace with your collection name
+import asyncio
 
 
 class Pomodoro(commands.Cog):
@@ -23,6 +16,19 @@ class Pomodoro(commands.Cog):
         self.completed_cycles = 0  # To track completed cycles
         self.total_work_time = 0  # To log total work time
 
+        # Initialize MongoDB connection
+        self.sessions_collection = self.get_mongo_collection()
+
+    def get_mongo_collection(self):
+        """Sets up and returns the MongoDB collection."""
+        try:
+            mongo_client = MongoClient("MONGO_URI")  # Replace with your MongoDB URI
+            db = mongo_client["kohii"]  # Database name
+            return db["pomodoro"]  # Collection name
+        except Exception as e:
+            print(f"Failed to connect to MongoDB: {e}")
+            return None
+
     @discord.app_commands.command(name="pomodoro", description="Start a Pomodoro session with buttons.")
     async def pomodoro(self, interaction: discord.Interaction):
         """Starts the Pomodoro Timer with buttons."""
@@ -35,9 +41,10 @@ class Pomodoro(commands.Cog):
         self.total_work_time = 0
 
         # Start the interaction with a work phase
+        view = PomodoroView(self, interaction.user.id)
         await interaction.response.send_message(
             embed=self.create_embed("Pomodoro Timer", "Click Start to begin your session!", 0x00FF00),
-            view=PomodoroView(self, interaction.user.id)
+            view=view
         )
 
     def create_embed(self, title, description, color):
@@ -46,9 +53,23 @@ class Pomodoro(commands.Cog):
         embed.set_footer(text="Pomodoro Timer Bot")
         return embed
 
+    async def start_timer(self, interaction, phase_name, duration, message, view):
+        """Handles the timer logic for each phase."""
+        embed = self.create_embed(f"{phase_name} Started", message, 0x00FF00)
+        await interaction.response.edit_message(embed=embed, view=view)
+
+        for remaining in range(duration, 0, -1):
+            # Simulating a countdown in minutes for simplicity
+            if remaining % 60 == 0:
+                minutes_left = remaining // 60
+                embed.description = f"{minutes_left} minutes remaining!"
+                await interaction.edit_original_response(embed=embed)
+            await asyncio.sleep(1)  # Simulates time passing; adjust for testing
+
     async def stop_pomodoro(self, user_id, interaction):
         """Stops the Pomodoro session and provides feedback."""
         self.running = False
+
         # Provide session feedback
         feedback_embed = self.create_embed(
             "Pomodoro Session Stopped",
@@ -59,12 +80,17 @@ class Pomodoro(commands.Cog):
         await interaction.response.edit_message(embed=feedback_embed, view=None)
 
         # Save session data to MongoDB
-        session_data = {
-            "user_id": user_id,
-            "completed_cycles": self.completed_cycles,
-            "total_work_time": self.total_work_time // 60,  # Store in minutes
-        }
-        sessions_collection.insert_one(session_data)
+        if self.sessions_collection:
+            session_data = {
+                "user_id": user_id,
+                "completed_cycles": self.completed_cycles,
+                "total_work_time": self.total_work_time // 60,  # Store in minutes
+            }
+            try:
+                self.sessions_collection.insert_one(session_data)
+                print("Session data saved successfully!")
+            except Exception as e:
+                print(f"Failed to save session data: {e}")
 
 
 class PomodoroView(View):
@@ -83,24 +109,27 @@ class PomodoroView(View):
             return
 
         if self.phase == "work":
-            await self.cog.start_timer(interaction, "Work Time", self.cog.work_time, "Focus on your tasks!")
+            await self.cog.start_timer(
+                interaction, "Work Time", self.cog.work_time, "Focus on your tasks!", self
+            )
             self.phase = "short_break"
             self.cog.total_work_time += self.cog.work_time
             self.cog.completed_cycles += 1
         elif self.phase == "short_break":
-            await self.cog.start_timer(interaction, "Short Break", self.cog.short_break_time, "Take a short break!")
+            await self.cog.start_timer(
+                interaction, "Short Break", self.cog.short_break_time, "Take a short break!", self
+            )
             self.cycle_count += 1
             if self.cycle_count >= self.cog.cycles:
                 self.phase = "long_break"
             else:
                 self.phase = "work"
         elif self.phase == "long_break":
-            await self.cog.start_timer(interaction, "Long Break", self.cog.long_break_time, "Enjoy your long break!")
+            await self.cog.start_timer(
+                interaction, "Long Break", self.cog.long_break_time, "Enjoy your long break!", self
+            )
             self.phase = "work"  # Reset to work phase after long break
             self.cycle_count = 0  # Reset cycle count
-
-        # Update buttons dynamically
-        await interaction.edit_original_response(view=self)
 
     @discord.ui.button(label="Stop", style=discord.ButtonStyle.danger)
     async def stop_button(self, interaction: discord.Interaction, button: Button):

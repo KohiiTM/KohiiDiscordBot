@@ -79,6 +79,7 @@ async def load_cogs():
         "cogs.auto_responses",
         "cogs.chat_logs",
         "cogs.avatar",
+        "cogs.restart",
         
     ]
     for cog in cog_list:
