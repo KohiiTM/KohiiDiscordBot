@@ -1,6 +1,5 @@
 
 
 .env
-__pycache__/
-__pycache__
-requirements.txt
+kohii\bot\__pycache__
+kohii\bot\requirements.txt
