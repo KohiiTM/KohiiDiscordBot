@@ -1,52 +1,74 @@
 import discord
-from discord import app_commands
 from discord.ext import commands
+from discord import app_commands
 import openai
 import os
+from dotenv import load_dotenv
+import asyncio
 
-# Load OpenAI API key
+# Load environment variables from .env file
+load_dotenv()
+
+# Set your OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-class OpenAIBot(commands.Cog):
+class GPT4Cog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    def query_openai(self, question: str) -> str:
-        """Query OpenAI's GPT-3.5 Turbo for responses."""
+    @app_commands.command(
+        name="askgpt", 
+        description="Ask GPT-4 a question and get a response."
+    )
+    async def ask_gpt(self, interaction: discord.Interaction):
+        """
+        Slash command to interact with GPT-4.
+        Allows multi-line input and handles long responses.
+        """
+        await interaction.response.send_message(
+            "Please type your question or prompt below. You can use multiple lines. Type `done` when you're finished."
+        )
+
+        def check(message: discord.Message):
+            return message.author == interaction.user and message.channel == interaction.channel
+
+        prompt = []
+        while True:
+            try:
+                message = await self.bot.wait_for("message", timeout=300.0, check=check)
+                if message.content.lower() == "done":
+                    break
+                prompt.append(message.content)
+            except asyncio.TimeoutError:
+                await interaction.followup.send("You took too long to respond. Please try again.")
+                return
+
+        full_prompt = "\n".join(prompt)
+
         try:
+            # Sending the collected prompt to GPT-4
             response = openai.ChatCompletion.create(
-                model="gpt-4o",
+                model="chatgpt-4o-latest",  # Use the requested model
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": question},
+                    {"role": "user", "content": full_prompt},
                 ],
+                max_tokens=2048,  # Increase token limit for longer responses
                 temperature=0.7,
-                max_tokens=150,  # Limit response length
             )
-            return response.choices[0].message.content
-        except openai.error.AuthenticationError:
-            return "Error: Authentication failed. Please check your OpenAI API key."
-        except openai.error.RateLimitError:
-            return "Error: Rate limit exceeded. Please try again later."
+
+            reply = response['choices'][0]['message']['content']
+
+            # Split the response into chunks if it's too long for a single Discord message
+            if len(reply) > 2000:
+                for chunk in [reply[i:i + 2000] for i in range(0, len(reply), 2000)]:
+                    await interaction.followup.send(chunk)
+            else:
+                await interaction.followup.send(reply)
+
         except openai.error.OpenAIError as e:
-            return f"OpenAI API error: {e}"
-        except Exception as e:
-            return f"Unexpected error: {e}"
+            await interaction.followup.send(f"Error communicating with OpenAI: {e}")
 
-    @app_commands.command(name="ask", description="Ask the AI a question.")
-    async def ask(self, interaction: discord.Interaction, question: str):
-        """Slash command to ask a question."""
-        await interaction.response.defer(thinking=True)  # Defer the response
-        
-        # Call the synchronous OpenAI query method in a separate thread
-        response = await self.bot.loop.run_in_executor(None, self.query_openai, question)
-
-        # Check if response is empty or an error
-        if response.startswith("Error:"):
-            await interaction.followup.send(response)  # Send error as a follow-up message
-        else:
-            await interaction.followup.send(f"**Q:** {question}\n**A:** {response}")
-
-async def setup(bot: commands.Bot):
-    """Setup function to add the cog to the bot."""
-    await bot.add_cog(OpenAIBot(bot))
+# Setup function to add the cog to the bot
+async def setup(bot):
+    await bot.add_cog(GPT4Cog(bot))
