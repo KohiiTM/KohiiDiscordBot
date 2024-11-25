@@ -5,12 +5,15 @@ from dotenv import load_dotenv
 import asyncio
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+import requests
+import openai
 
 # Load environment variables
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 MONGO_USERNAME = os.getenv("MONGO_USERNAME")
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
+
 
 # Construct MongoDB URI
 MONGO_URI = (
@@ -80,6 +83,7 @@ async def load_cogs():
         "cogs.chat_logs",
         "cogs.avatar",
         "cogs.restart",
+        "cogs.gpt",
         
     ]
     for cog in cog_list:
