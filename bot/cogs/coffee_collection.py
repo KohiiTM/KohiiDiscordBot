@@ -59,8 +59,8 @@ class CoffeeCollection(commands.Cog):
         self.db = self.mongo_client["coffee_bot"]
         self.user_collections = self.db["user_collections"]
 
+    # Function to load a user's collection from MongoDB, including discord name
     def load_user_collection(self, user_id):
-        """Load or initialize the user's collection."""
         user = self.user_collections.find_one({"discord_id": str(user_id)})
         discord_name = user.get("discord_name", f"User_{user_id}") if user else None
         return user.get("cards", []) if user else [], discord_name
@@ -103,7 +103,7 @@ class CoffeeCollection(commands.Cog):
         max_height = max(img.height for img in images)
 
         # Create a new blank image to fit all card images
-        new_img = Image.new("RGB", (total_width, max_height))
+        new_img = Image.new('RGB', (total_width, max_height))
 
         # Paste each image into the new image
         x_offset = 0
