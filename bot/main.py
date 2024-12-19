@@ -84,6 +84,7 @@ async def load_cogs():
         "cogs.avatar",
         "cogs.restart",
         "cogs.gpt",
+        "cogs.coffee_collection",
         
     ]
     for cog in cog_list:
