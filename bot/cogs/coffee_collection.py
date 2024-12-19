@@ -103,7 +103,7 @@ class CoffeeCollection(commands.Cog):
         max_height = max(img.height for img in images)
 
         # Create a new blank image to fit all card images
-        new_img = Image.new('RGB', (total_width, max_height))
+        new_img = Image.new("RGB", (total_width, max_height))
 
         # Paste each image into the new image
         x_offset = 0
