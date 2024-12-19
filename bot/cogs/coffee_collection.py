@@ -9,9 +9,22 @@ coffee_cards = {
     "Espresso": {"rarity": "common", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 1},
     "Cappuccino": {"rarity": "rare", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 2},
     "Latte": {"rarity": "uncommon", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 3},
-    "Mug": {"rarity": "common", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 4},
+    "Americano": {"rarity": "uncommon", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 6},
+    "Mocha": {"rarity": "rare", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 7},
+    "Flat White": {"rarity": "rare", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 8},
+    "Cold Brew": {"rarity": "common", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 9},
+    "Turkish Coffee": {"rarity": "legendary", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 10},
+    "Iced Latte": {"rarity": "uncommon", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 11},
+    "Café au Lait": {"rarity": "rare", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 12},
+    "Coffee Grinder": {"rarity": "common", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 13},
+    "Caffeine Boost": {"rarity": "uncommon", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 14},
+    "Barista Kit": {"rarity": "legendary", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 15},
     "Coffee Bean": {"rarity": "uncommon", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 5},
+    "Coffee Mug": {"rarity": "common", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 16},
+    "Siphon Brewer": {"rarity": "legendary", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 17},
+    "French Press": {"rarity": "uncommon", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 18},
 }
+
 
 class CoffeeCollection(commands.Cog):
     def __init__(self, bot):
@@ -20,22 +33,25 @@ class CoffeeCollection(commands.Cog):
         self.db = self.mongo_client["coffee_bot"]
         self.user_collections = self.db["user_collections"]
 
-    # Function to load a user's collection from MongoDB
+    # Function to load a user's collection from MongoDB, including discord name
     def load_user_collection(self, user_id):
         user = self.user_collections.find_one({"discord_id": str(user_id)})
         if user:
-            return user["cards"]
-        return []
+            return user["cards"], user["discord_name"]
+        return [], None
 
-    # Function to save or update a user's collection
-    def save_user_collection(self, user_id, collection):
+    # Function to save or update a user's collection, including discord name
+    def save_user_collection(self, user_id, collection, discord_name):
         user = self.user_collections.find_one({"discord_id": str(user_id)})
         if user:
-            # Update existing user's collection
-            self.user_collections.update_one({"discord_id": str(user_id)}, {"$set": {"cards": collection}})
+            # Update existing user's collection and name
+            self.user_collections.update_one(
+                {"discord_id": str(user_id)}, 
+                {"$set": {"cards": collection, "discord_name": discord_name}}
+            )
         else:
-            # Create new document for user
-            self.user_collections.insert_one({"discord_id": str(user_id), "cards": collection})
+            # Create new document for user with their name and collection
+            self.user_collections.insert_one({"discord_id": str(user_id), "discord_name": discord_name, "cards": collection})
 
     # Slash command to collect a coffee card with a cooldown
     @app_commands.command(name="collect", description="Collect a pair of coffee-related cards!")
@@ -46,17 +62,19 @@ class CoffeeCollection(commands.Cog):
         card_2 = random.choice([key for key in coffee_cards.keys() if key == "Mug" or key == "Coffee Bean"])
 
         # Load user's collection and append the new cards
-        user_collection = self.load_user_collection(interaction.user.id)
+        user_collection, discord_name = self.load_user_collection(interaction.user.id)
+        if discord_name is None:
+            discord_name = interaction.user.name  # If name not found, use the current Discord name
         user_collection.append(card_1)
         user_collection.append(card_2)
-        self.save_user_collection(interaction.user.id, user_collection)
+        self.save_user_collection(interaction.user.id, user_collection, discord_name)
 
         # Get card details
         card_1_details = coffee_cards[card_1]
         card_2_details = coffee_cards[card_2]
 
         # Create embed with images
-        embed = discord.Embed(title=f"{interaction.user.name} has collected new cards!", color=discord.Color.blue())
+        embed = discord.Embed(title=f"{discord_name} has collected new cards!", color=discord.Color.blue())
 
         # Add both cards to the embed
         embed.add_field(
@@ -79,7 +97,7 @@ class CoffeeCollection(commands.Cog):
     # Slash command to view a user's cards
     @app_commands.command(name="my_cards", description="View your collected coffee cards.")
     async def my_cards(self, interaction: discord.Interaction):
-        user_collection = self.load_user_collection(interaction.user.id)
+        user_collection, discord_name = self.load_user_collection(interaction.user.id)
         
         if not user_collection:
             await interaction.response.send_message("You have no cards yet! Start collecting by using the `/collect` command.")
