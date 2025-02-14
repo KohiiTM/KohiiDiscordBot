@@ -43,3 +43,5 @@ class AutoResponses(commands.Cog):
 # Setup function to load the cog
 async def setup(bot: commands.Bot):
     await bot.add_cog(AutoResponses(bot))
+ 
+ 
