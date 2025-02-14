@@ -83,7 +83,6 @@ async def load_cogs():
         "cogs.chat_logs",
         "cogs.avatar",
         "cogs.restart",
-        "cogs.gpt",
         "cogs.coffee_collection",
         
     ]
