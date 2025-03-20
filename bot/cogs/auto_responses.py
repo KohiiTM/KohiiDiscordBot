@@ -38,23 +38,30 @@ class AutoResponses(commands.Cog):
         # Get the message content
         content = message.content.lower()
         
-        # Check if any keyword in the group matches as a whole word
+        # Find the first matching response group
+        matching_responses = None
         for keywords, possible_responses in response_groups.items():
             for keyword in keywords:
                 # For role mentions, we need an exact match (not lowercase)
                 if keyword == role_mention and keyword in message.content:
-                    response = random.choice(possible_responses)
-                    await message.channel.send(response)
-                    return
+                    matching_responses = possible_responses
+                    break
                 
                 # For regular keywords, use word boundary matching with regex
                 elif keyword != role_mention:
-                    # The \b represents a word boundary in regex
                     pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
                     if re.search(pattern, content):
-                        response = random.choice(possible_responses)
-                        await message.channel.send(response)
-                        return  # Stop after the first match
+                        matching_responses = possible_responses
+                        break
+            
+            # If we found a match, break out of the outer loop
+            if matching_responses:
+                break
+
+        # Send a single response if we found a match
+        if matching_responses:
+            response = random.choice(matching_responses)
+            await message.channel.send(response)
 
         # Allow command processing to continue
         await self.bot.process_commands(message)
