@@ -16,7 +16,7 @@ class AutoResponses(commands.Cog):
 
         # Define a dictionary with keywords and list of potential responses
         response_groups = {
-            ("val", "valorant"): [
+            ("val", "valorant", "@Valorant"): [
                 "https://tenor.com/view/choso-jjk-choso-choso-panic-insane-choso-anime-insane-gif-5693401929827560865",
                 "nah",
                 "https://tenor.com/view/valorant-nerd-brimstone-viper-omen-gif-9861738447246078182",
