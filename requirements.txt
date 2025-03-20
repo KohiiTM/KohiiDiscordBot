@@ -1,4 +1,4 @@
-﻿discord.py==2.4.0
+discord.py==2.4.0
 pymongo==4.10.1
 python-dotenv==1.0.1
 requests==2.32.3
@@ -6,3 +6,4 @@ pillow==11.0.0
 Flask==3.0.3
 Flask-Cors==5.0.0
 Flask-PyMongo==2.3.0
+dnspython==2.3.0
