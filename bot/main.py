@@ -6,7 +6,7 @@ import asyncio
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import requests
-import openai
+
 
 # Load environment variables
 load_dotenv()

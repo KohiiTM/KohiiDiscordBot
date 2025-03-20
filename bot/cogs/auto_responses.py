@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
-import random  # Import the random module for random responses
+import random
+import re  # Import re for regular expressions
 
 class AutoResponses(commands.Cog):
     """Cog for handling auto-responses."""
@@ -14,9 +15,13 @@ class AutoResponses(commands.Cog):
         if message.author == self.bot.user:
             return
 
+        # Define the role ID
+        role_id = '1128759195202760854'
+        role_mention = f'<@&{role_id}>'  # Create the role mention format
+
         # Define a dictionary with keywords and list of potential responses
         response_groups = {
-            ("val", "valorant", "@Valorant"): [
+            ("val", "valorant", role_mention): [
                 "https://tenor.com/view/choso-jjk-choso-choso-panic-insane-choso-anime-insane-gif-5693401929827560865",
                 "nah",
                 "https://tenor.com/view/valorant-nerd-brimstone-viper-omen-gif-9861738447246078182",
@@ -30,12 +35,26 @@ class AutoResponses(commands.Cog):
             ],
         }
 
-        # Check if any keyword in the group is in the message content
+        # Get the message content
+        content = message.content.lower()
+        
+        # Check if any keyword in the group matches as a whole word
         for keywords, possible_responses in response_groups.items():
-            if any(keyword in message.content.lower() for keyword in keywords):
-                response = random.choice(possible_responses)  # Randomly pick a response
-                await message.channel.send(response)
-                return  # Stop after the first match
+            for keyword in keywords:
+                # For role mentions, we need an exact match (not lowercase)
+                if keyword == role_mention and keyword in message.content:
+                    response = random.choice(possible_responses)
+                    await message.channel.send(response)
+                    return
+                
+                # For regular keywords, use word boundary matching with regex
+                elif keyword != role_mention:
+                    # The \b represents a word boundary in regex
+                    pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+                    if re.search(pattern, content):
+                        response = random.choice(possible_responses)
+                        await message.channel.send(response)
+                        return  # Stop after the first match
 
         # Allow command processing to continue
         await self.bot.process_commands(message)
@@ -43,5 +62,3 @@ class AutoResponses(commands.Cog):
 # Setup function to load the cog
 async def setup(bot: commands.Bot):
     await bot.add_cog(AutoResponses(bot))
- 
- 
