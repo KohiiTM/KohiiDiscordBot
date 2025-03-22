@@ -80,9 +80,6 @@ Kohii is a versatile Discord bot designed to enhance your server with various fe
 - **on_ready**: Log when the bot is ready and sync slash commands.
 - **on_disconnect**: Close MongoDB connection when the bot disconnects.
 
-## Contributing
-
-Contributions are welcome! Please fork the repository and create a pull request with your changes.
 
 ## License
 
