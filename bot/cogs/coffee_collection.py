@@ -10,6 +10,7 @@ import requests
 from io import BytesIO
 from dotenv import load_dotenv
 import os
+from typing import Dict, List, Any, Optional, Tuple
 
 # Load environment variables
 load_dotenv()
@@ -46,40 +47,53 @@ coffee_cards = {
 
 # Dictionary to track last command usage time for each user
 user_cooldowns = {}
-
-
-# Dictionary to track last command usage time for each user
-user_cooldowns = {}
 OWNER_ID = 696391065317408778  # Replace with your actual Discord ID
-
 
 class CoffeeCollection(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.mongo_client = bot.mongo_client
-        self.db = self.mongo_client["coffee_bot"]
-        self.user_collections = self.db["user_collections"]
-
-    # Function to load a user's collection from MongoDB, including discord name
-    def load_user_collection(self, user_id):
-        user = self.user_collections.find_one({"discord_id": str(user_id)})
-        discord_name = user.get("discord_name", f"User_{user_id}") if user else None
-        return user.get("cards", []) if user else [], discord_name
-
-    def save_user_collection(self, user_id, collection, discord_name):
-        """Save or update the user's collection."""
-        user = self.user_collections.find_one({"discord_id": str(user_id)})
-        if user:
-            self.user_collections.update_one(
-                {"discord_id": str(user_id)},
-                {"$set": {"cards": collection, "discord_name": discord_name}},
-            )
+        self.use_mongodb = bot.use_mongodb
+        if self.use_mongodb:
+            self.mongo_client = bot.mongo_client
+            self.db = self.mongo_client["coffee_bot"]
+            self.user_collections = self.db["user_collections"]
         else:
-            self.user_collections.insert_one(
-                {"discord_id": str(user_id), "discord_name": discord_name, "cards": collection}
-            )
+            # Initialize in-memory storage if MongoDB is not available
+            if "coffee_collections" not in bot.in_memory_storage:
+                bot.in_memory_storage["coffee_collections"] = {}
 
-    def rarity_to_color(self, rarity):
+    def load_user_collection(self, user_id: str) -> Tuple[List[Dict[str, Any]], str]:
+        """Load a user's collection from either MongoDB or in-memory storage."""
+        if self.use_mongodb:
+            user = self.user_collections.find_one({"discord_id": str(user_id)})
+            discord_name = user.get("discord_name", f"User_{user_id}") if user else None
+            return user.get("cards", []) if user else [], discord_name
+        else:
+            # Use in-memory storage
+            user_data = self.bot.in_memory_storage["coffee_collections"].get(str(user_id), {})
+            return user_data.get("cards", []), user_data.get("discord_name", f"User_{user_id}")
+
+    def save_user_collection(self, user_id: str, collection: List[Dict[str, Any]], discord_name: str) -> None:
+        """Save or update the user's collection in either MongoDB or in-memory storage."""
+        if self.use_mongodb:
+            user = self.user_collections.find_one({"discord_id": str(user_id)})
+            if user:
+                self.user_collections.update_one(
+                    {"discord_id": str(user_id)},
+                    {"$set": {"cards": collection, "discord_name": discord_name}},
+                )
+            else:
+                self.user_collections.insert_one(
+                    {"discord_id": str(user_id), "discord_name": discord_name, "cards": collection}
+                )
+        else:
+            # Save to in-memory storage
+            self.bot.in_memory_storage["coffee_collections"][str(user_id)] = {
+                "cards": collection,
+                "discord_name": discord_name
+            }
+
+    def rarity_to_color(self, rarity: str) -> discord.Color:
         """Return embed color based on rarity."""
         if rarity == "common":
             return discord.Color.green()
@@ -91,7 +105,7 @@ class CoffeeCollection(commands.Cog):
             return discord.Color.gold()
         return discord.Color.default()
 
-    def combine_images(self, card_images):
+    def combine_images(self, card_images: List[str]) -> BytesIO:
         """Combine card images into one image."""
         images = []
         for url in card_images:

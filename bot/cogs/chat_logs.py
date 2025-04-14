@@ -1,106 +1,122 @@
-from discord.ext import commands
 import discord
+from discord.ext import commands
+from datetime import datetime
+from typing import List, Dict, Any, Optional
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 class ChatLogs(commands.Cog):
+    """Listener to log messages to either MongoDB or in-memory storage."""
+
     def __init__(self, bot):
         self.bot = bot
+        self.use_mongodb = bot.use_mongodb
+        self.executor = ThreadPoolExecutor(max_workers=4)
+        
+        if self.use_mongodb:
+            self.collection = self.bot.mongo_client["kohii"]["user_messages"]
+        else:
+            # Initialize in-memory storage if MongoDB is not available
+            if "chat_logs" not in bot.in_memory_storage:
+                bot.in_memory_storage["chat_logs"] = []
+
+    def save_message(self, message_data: Dict[str, Any]) -> None:
+        """Save a message to either MongoDB or in-memory storage."""
+        if self.use_mongodb:
+            # Insert message into MongoDB using executor
+            def insert_message():
+                self.collection.insert_one(message_data)
+            self.executor.submit(insert_message)
+        else:
+            # Save to in-memory storage
+            self.bot.in_memory_storage["chat_logs"].append(message_data)
+
+    def get_user_messages(self, user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get user messages from either MongoDB or in-memory storage."""
+        if self.use_mongodb:
+            # Query MongoDB for user messages, sorted by timestamp
+            return list(self.collection.find(
+                {"user_id": user_id}
+            ).sort("timestamp", -1).limit(limit))
+        else:
+            # Get from in-memory storage
+            return sorted(
+                [msg for msg in self.bot.in_memory_storage["chat_logs"] if msg["user_id"] == user_id],
+                key=lambda x: x["timestamp"],
+                reverse=True
+            )[:limit]
+
+    def search_messages(self, keyword: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Search messages containing a keyword from either MongoDB or in-memory storage."""
+        if self.use_mongodb:
+            # Query MongoDB for messages containing the keyword
+            return list(self.collection.find(
+                {"content": {"$regex": keyword, "$options": "i"}}
+            ).sort("timestamp", -1).limit(limit))
+        else:
+            # Search in-memory storage
+            return sorted(
+                [msg for msg in self.bot.in_memory_storage["chat_logs"] if keyword.lower() in msg["content"].lower()],
+                key=lambda x: x["timestamp"],
+                reverse=True
+            )[:limit]
 
     @commands.Cog.listener()
-    async def on_message(self, message):
-        """
-        Listener to log messages to MongoDB.
-        """
-        # Ignore messages from bots
+    async def on_message(self, message: discord.Message):
+        """Log messages when they are sent."""
         if message.author.bot:
             return
 
-        # Access MongoDB collection
-        collection = self.bot.mongo_client["kohii"]["user_messages"]
-
-        # Prepare message data
         message_data = {
             "user_id": message.author.id,
-            "username": message.author.name,
+            "username": str(message.author),
             "content": message.content,
-            "timestamp": message.created_at.isoformat(),
             "channel_id": message.channel.id,
             "channel_name": message.channel.name,
+            "timestamp": datetime.utcnow(),
+            "guild_id": message.guild.id if message.guild else None,
+            "guild_name": message.guild.name if message.guild else None
         }
 
-        # Insert message into MongoDB
-        collection.insert_one(message_data)
-        print(f"Logged message: {message_data}")
+        self.save_message(message_data)
 
-    @commands.command(name="view_logs", help="View chat logs for a specific user.")
-    async def view_logs(self, ctx, user_id: int, limit: int = 10):
-        """
-        Command to view chat logs for a specific user.
-        """
-        # Access MongoDB collection
-        collection = self.bot.mongo_client["kohii"]["user_messages"]
-
-        # Query MongoDB for user messages, sorted by timestamp
-        messages = collection.find({"user_id": user_id}).sort("timestamp", 1).limit(limit)
-
-        # Check if any messages exist
-        if messages.count() == 0:
-            await ctx.send(f"No chat logs found for user ID: {user_id}.")
+    @commands.command(name="mylogs")
+    async def my_logs(self, ctx, limit: int = 10):
+        """View your recent messages."""
+        messages = self.get_user_messages(ctx.author.id, limit)
+        
+        if not messages:
+            await ctx.send("No messages found in your history.")
             return
 
-        # Build a response string
-        response = [f"**{msg['timestamp']}** - {msg['content']}" for msg in messages]
-        await ctx.send(f"Chat logs for user ID `{user_id}` (up to {limit} messages):\n" + "\n".join(response))
+        embed = discord.Embed(title=f"Your Recent Messages", color=discord.Color.blue())
+        for msg in messages:
+            embed.add_field(
+                name=f"Channel: {msg['channel_name']}",
+                value=f"{msg['content']}\n{msg['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}",
+                inline=False
+            )
+        
+        await ctx.send(embed=embed)
 
-    @commands.command(name="search_logs", help="Search chat logs by keyword.")
-    async def search_logs(self, ctx, keyword: str, limit: int = 10):
-        """
-        Command to search chat logs for a specific keyword.
-        """
-        # Access MongoDB collection
-        collection = self.bot.mongo_client["kohii"]["user_messages"]
-
-        # Query MongoDB for messages containing the keyword
-        messages = collection.find(
-            {"content": {"$regex": keyword, "$options": "i"}}  # Case-insensitive search
-        ).sort("timestamp", 1).limit(limit)
-
-        # Check if any messages exist
-        if messages.count() == 0:
-            await ctx.send(f"No messages found containing the keyword: `{keyword}`.")
+    @commands.command(name="search")
+    async def search(self, ctx, *, keyword: str):
+        """Search for messages containing a keyword."""
+        messages = self.search_messages(keyword)
+        
+        if not messages:
+            await ctx.send(f"No messages found containing '{keyword}'.")
             return
 
-        # Build a response string
-        response = [f"**{msg['timestamp']}** - {msg['content']}" for msg in messages]
-        await ctx.send(f"Messages containing `{keyword}` (up to {limit} messages):\n" + "\n".join(response))
-
-    @commands.command(name="paginate_logs", help="Paginate user chat logs.")
-    async def paginate_logs(self, ctx, user_id: int, page: int = 1, per_page: int = 10):
-        """
-        Command to paginate chat logs for a user.
-        """
-        # Access MongoDB collection
-        collection = self.bot.mongo_client["kohii"]["user_messages"]
-
-        # Calculate skip and limit
-        skip = (page - 1) * per_page
-
-        # Query MongoDB for user messages
-        messages = collection.find({"user_id": user_id}).sort("timestamp", 1).skip(skip).limit(per_page)
-
-        # Check if any messages exist
-        if messages.count() == 0:
-            await ctx.send(f"No messages found for user ID `{user_id}` on page {page}.")
-            return
-
-        # Build a response string
-        response = [f"**{msg['timestamp']}** - {msg['content']}" for msg in messages]
-        await ctx.send(
-            f"Page {page} of chat logs for user ID `{user_id}` (up to {per_page} messages per page):\n"
-            + "\n".join(response)
-        )
+        embed = discord.Embed(title=f"Search Results for '{keyword}'", color=discord.Color.green())
+        for msg in messages:
+            embed.add_field(
+                name=f"From: {msg['username']} in {msg['channel_name']}",
+                value=f"{msg['content']}\n{msg['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}",
+                inline=False
+            )
+        
+        await ctx.send(embed=embed)
 
 async def setup(bot):
-    """
-    Setup function to add this cog to the bot.
-    """
     await bot.add_cog(ChatLogs(bot))

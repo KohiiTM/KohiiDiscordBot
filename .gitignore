@@ -1,5 +1,28 @@
-Dockerfile
-setup.sh
+# Configurations
 .env
-__pycache__
+.env.*
+config.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+ENV/
+
+# Docker
+Dockerfile
 docker-compose.yml
+.docker/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/

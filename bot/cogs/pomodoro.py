@@ -1,8 +1,9 @@
 import discord
 from discord.ext import commands
 import asyncio
-from datetime import datetime
 import logging
+from datetime import datetime, timedelta
+from typing import Dict, Any, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.ERROR)
@@ -11,46 +12,87 @@ logger = logging.getLogger(__name__)
 class Pomodoro(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.active_sessions = {}  # Track active sessions
-
-    @discord.app_commands.command(name="start", description="Start a new Pomodoro session.")
-    async def start_pomodoro(self, interaction: discord.Interaction):
-        """Start a new Pomodoro session."""
-        user_id = interaction.user.id
-        if user_id in self.active_sessions:
-            await interaction.response.send_message("You already have an active Pomodoro session.", ephemeral=True)
-            return
-
-        collection = self.bot.mongo_client["kohii"]["pomodoro"]
-        session = PomodoroSession(user_id, interaction.channel, collection)
-        self.active_sessions[user_id] = session
-        await interaction.response.send_message("Starting your Pomodoro session!", ephemeral=True)
-        await session.start_work()
-
-    @discord.app_commands.command(name="stop", description="Stop the current Pomodoro session.")
-    async def stop_pomodoro(self, interaction: discord.Interaction):
-        """Stop the Pomodoro session."""
-        user_id = interaction.user.id
-        if user_id not in self.active_sessions:
-            await interaction.response.send_message("You don’t have an active Pomodoro session.", ephemeral=True)
-            return
-
-        session = self.active_sessions.pop(user_id)
-        await session.stop()
-        await interaction.response.send_message("Pomodoro session stopped and saved!", ephemeral=True)
-
-    @discord.app_commands.command(name="skip", description="Skip the current Pomodoro phase.")
-    async def skip_pomodoro(self, interaction: discord.Interaction):
-        """Skip the current phase."""
-        user_id = interaction.user.id
-        if user_id not in self.active_sessions:
-            await interaction.response.send_message("You don’t have an active Pomodoro session.", ephemeral=True)
-            return
-
-        session = self.active_sessions[user_id]
-        await session.skip_phase()
-        await interaction.response.send_message("Skipped to the next phase!", ephemeral=True)
+        self.use_mongodb = bot.use_mongodb
+        self.active_sessions: Dict[int, Dict[str, Any]] = {}  # Store active sessions in memory
         
+        if self.use_mongodb:
+            self.collection = self.bot.mongo_client["kohii"]["pomodoro"]
+        else:
+            # Initialize in-memory storage if MongoDB is not available
+            if "pomodoro_sessions" not in bot.in_memory_storage:
+                bot.in_memory_storage["pomodoro_sessions"] = {}
+
+    def get_session(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get a session from either MongoDB or in-memory storage."""
+        if self.use_mongodb:
+            return self.collection.find_one({"user_id": user_id})
+        else:
+            return self.bot.in_memory_storage["pomodoro_sessions"].get(str(user_id))
+
+    def save_session(self, user_id: int, session_data: Dict[str, Any]) -> None:
+        """Save a session to either MongoDB or in-memory storage."""
+        if self.use_mongodb:
+            self.collection.update_one(
+                {"user_id": user_id},
+                {"$set": session_data},
+                upsert=True
+            )
+        else:
+            self.bot.in_memory_storage["pomodoro_sessions"][str(user_id)] = session_data
+
+    @commands.command(name="pomodoro")
+    async def pomodoro(self, ctx, duration: int = 25):
+        """Start a pomodoro session."""
+        if ctx.author.id in self.active_sessions:
+            await ctx.send("You already have an active pomodoro session!")
+            return
+
+        # Create session data
+        session_data = {
+            "user_id": ctx.author.id,
+            "start_time": datetime.utcnow(),
+            "duration": duration,
+            "status": "active"
+        }
+
+        # Save initial session data
+        self.save_session(ctx.author.id, session_data)
+        self.active_sessions[ctx.author.id] = session_data
+
+        # Send initial message
+        message = await ctx.send(f"Pomodoro session started! Focus for {duration} minutes.")
+        
+        # Wait for the duration
+        await asyncio.sleep(duration * 60)
+        
+        # Check if session is still active
+        if ctx.author.id in self.active_sessions:
+            await message.edit(content=f"Time's up! Take a 5-minute break, {ctx.author.mention}!")
+            
+            # Update session status
+            session_data["status"] = "completed"
+            session_data["end_time"] = datetime.utcnow()
+            self.save_session(ctx.author.id, session_data)
+            del self.active_sessions[ctx.author.id]
+
+    @commands.command(name="stop")
+    async def stop(self, ctx):
+        """Stop the current pomodoro session."""
+        if ctx.author.id not in self.active_sessions:
+            await ctx.send("You don't have an active pomodoro session!")
+            return
+
+        # Get session data
+        session_data = self.active_sessions[ctx.author.id]
+        session_data["status"] = "stopped"
+        session_data["end_time"] = datetime.utcnow()
+        
+        # Save final session data
+        self.save_session(ctx.author.id, session_data)
+        del self.active_sessions[ctx.author.id]
+        
+        await ctx.send("Pomodoro session stopped!")
+
     @discord.app_commands.command(name="session_history", description="View your Pomodoro session history.")
     async def session_history(self, interaction: discord.Interaction, limit: int = 5):
         """
@@ -88,76 +130,6 @@ class Pomodoro(commands.Cog):
 
         # Send the embed as a response
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        
-
-
-class PomodoroSession:
-    def __init__(self, user_id, channel, collection):
-        self.user_id = user_id
-        self.channel = channel
-        self.collection = collection
-        self.work_sessions_completed = 0
-        self.is_running = False
-        self.phase = "work"  # "work" or "break"
-        self.timer_task = None
-
-    async def start_work(self):
-        """Start the work phase."""
-        self.is_running = True
-        await self.channel.send(f"<@{self.user_id}> Starting work session. Focus for 25 minutes!")
-        self.timer_task = asyncio.create_task(self.run_timer(25 * 60))
-
-    async def start_break(self, is_long_break=False):
-        """Start the break phase."""
-        self.phase = "break"
-        duration = 15 * 60 if is_long_break else 5 * 60
-        break_type = "long" if is_long_break else "short"
-        await self.channel.send(f"<@{self.user_id}> Starting a {break_type} break for {duration // 60} minutes!")
-        self.timer_task = asyncio.create_task(self.run_timer(duration))
-
-    async def stop(self):
-        """Stop the session and save to MongoDB."""
-        self.is_running = False
-        if self.timer_task:
-            self.timer_task.cancel()
-        await self.channel.send(f"<@{self.user_id}> Pomodoro session stopped.")
-
-        # Save session to MongoDB
-        session_data = {
-            "user_id": self.user_id,
-            "work_sessions_completed": self.work_sessions_completed,
-            "timestamp": datetime.utcnow(),
-        }
-        try:
-            self.collection.insert_one(session_data)
-        except Exception as e:
-            logger.error(f"Error saving session data to MongoDB: {e}")
-            await self.channel.send("Failed to save session data. Please try again.")
-
-    async def skip_phase(self):
-        """Skip the current phase."""
-        if self.timer_task:
-            self.timer_task.cancel()
-        if self.phase == "work":
-            await self.start_break()
-        else:
-            await self.start_work()
-
-    async def run_timer(self, duration):
-        """Run the timer for the current phase."""
-        try:
-            while duration > 0:
-                await asyncio.sleep(1)
-                duration -= 1
-            if self.phase == "work":
-                self.work_sessions_completed += 1
-                is_long_break = self.work_sessions_completed % 4 == 0
-                await self.start_break(is_long_break=is_long_break)
-            else:
-                await self.start_work()
-        except asyncio.CancelledError:
-            pass
-
 
 async def setup(bot):
     """Setup function to add the Pomodoro cog."""

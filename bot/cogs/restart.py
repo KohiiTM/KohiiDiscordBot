@@ -18,13 +18,10 @@ class Restart(commands.Cog):
 
         await interaction.response.send_message("Restarting bot...")
 
-        # Properly close the bot before restarting
         await self.bot.close()
 
-        # Restart the bot process
         os.execv(sys.executable, ["python"] + sys.argv)
 
 
 async def setup(bot):
-    """Setup function to add the Restart cog to the bot."""
     await bot.add_cog(Restart(bot))
