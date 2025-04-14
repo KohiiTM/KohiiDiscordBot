@@ -37,6 +37,9 @@ class AutoResponses(commands.Cog):
             ("league", "league of legends", "lol", "league of legends"): [
                 "https://tenor.com/view/league-of-legends-gif-24451872",
                 "https://tenor.com/view/dog-run-away-scared-jump-out-window-dogs-gif-7549502188035868767",
+            ],
+            ("1am",): [ 
+                "https://tenor.com/view/druski-kai-cenat-kevin-hart-dance-dancing-gif-5733905296005353973",
             ]
         }
 
