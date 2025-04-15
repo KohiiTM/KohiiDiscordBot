@@ -57,7 +57,17 @@ class AutoResponses(commands.Cog):
         role_id = '1128759195202760854'
         role_mention = f'<@&{role_id}>'
         
+        role_rivals = '1354559070199091200'
+        rivals_mention = f'<@&{role_rivals}>'
+        
         response_groups = {
+            ("rivals", "marvel", rivals_mention): {
+                "type": "gif",
+                "search": "marvel rivals",
+                "fallback": [
+                    "https://tenor.com/view/groot-marvel-marvel-rivaks-ellunya-meme-gif-12648975181727081457",
+                ]
+            },
             ("val", "valorant", role_mention): {
                 "type": "gif",
                 "search": "valorant funny",
