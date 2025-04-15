@@ -90,7 +90,14 @@ class AutoResponses(commands.Cog):
                 "fallback": [
                     "https://tenor.com/view/druski-kai-cenat-kevin-hart-dance-dancing-gif-5733905296005353973",
                 ]
-            }
+            },
+            ("juice",): {
+                "type": "gif",
+                "search": "juice wrld dance",
+                "fallback": [
+                    "https://tenor.com/view/jw3-juice-wrld-2019-my-year-gif-14321242830957102561",
+                ]
+            },
         }
 
         content = message.content.lower()
