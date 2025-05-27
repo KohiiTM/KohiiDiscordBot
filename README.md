@@ -1,25 +1,35 @@
 # Kohii Discord Bot
 
-Kohii is a versatile Discord bot designed to enhance your server with various features, including chat logging, Pomodoro sessions, auto-responses, and more. It also includes a Flask web server for additional functionality.
+Kohii is a Discord bot designed to enhance your study sessions with AI-powered assistance, Pomodoro timers, and productivity features. Perfect for students and learners who want to stay focused and get help when needed.
 
 ## Features
 
-- **Ping**: Check the bot's latency
-- **Restart**: Restart the bot (requires admin privileges)
-- **Chat Logs**: Log and view chat messages
-- **Pomodoro**: Manage Pomodoro sessions for productivity
-- **Avatar**: Retrieve a user's profile picture
-- **Auto Responses**: Automatically respond to specific keywords
-- **Coffee Collection**: Collect and trade coffee-related cards
-- **Web Interface**: Flask-based web server for additional functionality
+### Study Assistance
+
+- **AI Chat**: Chat with an llm for help with homework, explanations, and study guidance
+  - Multiple response styles (concise, detailed, technical, etc.)
+  - Maintains conversation context for follow-up questions
+  - Perfect for getting quick answers or detailed explanations
+- **Pomodoro**: Manage study sessions with customizable timers
+  - Start/stop/skip study and break phases
+  - Track your study session history
+  - Stay focused with timed intervals
+
+### Productivity Tools
+
+- **Chat Logs**: Keep track of important discussions and study group conversations
+- **Auto Responses**: Set up automatic replies for common questions or fun moments
+- **Avatar**: Quick access to user profile pictures
+- **Coffee Collection**: Card collection system to reward study breaks (in progress)
 
 ## Setup
 
 ### Prerequisites
 
 - Python 3.8+
-- MongoDB
+- MongoDB (optional, for persistent storage)
 - Discord Bot Token
+- Google API Key (for Gemini AI features)
 - Required Python packages (listed in `requirements.txt`)
 
 ### Installation
@@ -29,7 +39,7 @@ Kohii is a versatile Discord bot designed to enhance your server with various fe
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/yourusername/kohii.git
+   git clone https://github.com/KohiiTM/KohiiDiscordBot.git
    cd kohii
    ```
 
@@ -55,6 +65,7 @@ Kohii is a versatile Discord bot designed to enhance your server with various fe
    DISCORD_TOKEN=your_discord_token
    MONGO_USERNAME=your_mongo_username
    MONGO_PASSWORD=your_mongo_password
+   GOOGLE_API=your_google_api_key
    ```
 
 5. Run the bot:
@@ -80,30 +91,29 @@ Kohii is a versatile Discord bot designed to enhance your server with various fe
 
 ## Usage
 
-### Commands
+### Study Commands
 
-- **/ping**: Check the bot's latency
+- **/ask_kohii**: Start a chat session with the AI assistant
+
+  - Ask questions about any subject
+  - Get explanations in different styles
+  - Continue the conversation with follow-up questions
+  - Type 'stop session' to end the chat
+
+- **/start**: Begin a Pomodoro study session
+- **/stop**: End the current study session
+- **/skip**: Move to the next phase of your study session
+- **/session_history**: Review your past study sessions
+
+### Utility Commands
+
+- **/ping**: Check the bot's response time
 - **/restart**: Restart the bot (admin only)
 - **/shutdown**: Gracefully shut down the bot (owner only)
-- **/start**: Start a new Pomodoro session
-- **/stop**: Stop the current Pomodoro session
-- **/skip**: Skip the current Pomodoro phase
-- **/session_history**: View your Pomodoro session history
-- **/avatar**: Retrieve a user's profile picture
-- **/collect**: Collect a random pair of coffee-related cards
-- **/my_cards**: View your collected coffee cards
-- **/trade**: Trade a coffee card with another user
-- **/clear_collection**: Clear all coffee cards from a user's collection (owner only)
-
-### Event Listeners
-
-- **on_message**: Log messages to MongoDB and handle auto-responses
-- **on_ready**: Log when the bot is ready and sync slash commands
-- **on_disconnect**: Close MongoDB connection when the bot disconnects
-
-### Web Interface
-
-The bot includes a Flask web server that provides additional functionality. By default, it runs on port 5000.
+- **/avatar**: Get a user's profile picture
+- **/collect**: Get a random coffee card (study break reward)
+- **/my_cards**: View your coffee card collection
+- **/trade**: Trade coffee cards with other users
 
 ## Development
 
@@ -113,6 +123,9 @@ The bot includes a Flask web server that provides additional functionality. By d
 kohii/
 ├── bot/                # Main bot code
 │   ├── cogs/          # Bot command modules
+│   │   ├── gemini.py  # AI chat functionality
+│   │   ├── pomodoro.py # Study timer features
+│   │   └── ...        # Other features
 │   └── main.py        # Bot entry point
 ├── Dockerfile         # Docker configuration
 ├── docker-compose.yml # Docker Compose configuration
@@ -127,6 +140,10 @@ The project includes pytest for testing. Run tests using:
 ```sh
 pytest
 ```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
 ## License
 
