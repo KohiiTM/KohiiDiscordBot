@@ -40,7 +40,7 @@ bot = commands.Bot(command_prefix='/', intents=intents)
 
 bot.mongo_client = mongo_client
 bot.use_mongodb = use_mongodb
-bot.in_memory_storage: Dict[str, Any] = {}  # In-memory storage as fallback
+bot.in_memory_storage = {}  # In-memory storage as fallback
 
 
 @bot.tree.command(name="shutdown", description="Gracefully shuts down the bot.")
