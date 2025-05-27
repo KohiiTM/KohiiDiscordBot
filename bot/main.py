@@ -80,6 +80,7 @@ async def load_cogs():
         "cogs.avatar",
         "cogs.restart",
         "cogs.coffee_collection",
+        "cogs.gemini",
         
     ]
     for cog in cog_list:
