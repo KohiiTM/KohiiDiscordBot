@@ -47,7 +47,7 @@ bot.in_memory_storage = {}  # In-memory storage as fallback
 async def shutdown(interaction: discord.Interaction):
     bot_owner_id = 696391065317408778  # Replace with your Discord user ID
     if interaction.user.id == bot_owner_id:
-        await interaction.response.send_message("Shutting down the bot. Goodbye! 👋", ephemeral=True)
+        await interaction.response.send_message("Shutting down the bot. Goodbye! 👋")
         await bot.close()  # Gracefully close the bot connection
     else:
         await interaction.response.send_message(
