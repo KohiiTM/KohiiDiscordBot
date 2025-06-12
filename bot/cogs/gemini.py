@@ -16,7 +16,7 @@ class Gemini(commands.Cog):
         self.active_sessions: Dict[int, bool] = {}  # Track active sessions by user ID
         self.conversation_history: Dict[int, List[str]] = {}  # Track conversation history by user ID
         
-        # Define different response styles
+        # response styles
         self.styles = {
             "default": "You are a helpful AI assistant. Provide clear, concise, and accurate responses.",
             "concise": "You are a concise AI assistant. Keep responses brief and to the point, using bullet points when possible.",
@@ -27,14 +27,13 @@ class Gemini(commands.Cog):
         }
 
     def split_response(self, text: str, max_length: int = 1900) -> list[str]:
-        """Split a long response into chunks that fit within Discord's limits."""
+        # fit discord msg limits
         if len(text) <= max_length:
             return [text]
         
         chunks = []
         current_chunk = ""
         
-        # Split by sentences to keep them intact
         sentences = text.split(". ")
         for sentence in sentences:
             if len(current_chunk) + len(sentence) + 2 <= max_length:
