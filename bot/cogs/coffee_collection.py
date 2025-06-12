@@ -45,9 +45,8 @@ coffee_cards = {
     "Matcha": {"rarity": "uncommon", "image_url": "https://cdn.pixabay.com/photo/2021/06/18/10/39/mug-6345793_1280.jpg", "id": 24}
 }
 
-# Dictionary to track last command usage time for each user
 user_cooldowns = {}
-OWNER_ID = 696391065317408778  # Replace with your actual Discord ID
+OWNER_ID = os.getenv("OWNER_ID")
 
 class CoffeeCollection(commands.Cog):
     def __init__(self, bot):

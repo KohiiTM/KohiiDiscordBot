@@ -25,7 +25,7 @@ class AutoResponses(commands.Cog):
         if not self.session:
             self.session = aiohttp.ClientSession()
             
-        # Construct the Tenor API URL
+        # Tenor API
         url = f"https://tenor.googleapis.com/v2/search?q={search_term}&key={self.tenor_api_key}&limit={limit}"
         
         try:
