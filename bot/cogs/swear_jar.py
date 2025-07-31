@@ -14,9 +14,10 @@ class SwearJar(commands.Cog):
         self.use_mongodb = bot.use_mongodb
         self.swear_words = self.load_swear_words()
         
-        if self.use_mongodb:
+        if self.use_mongodb and self.bot.mongo_client:
             self.collection = self.bot.mongo_client["kohii"]["swear_counts"]
         else:
+            self.use_mongodb = False
             if "swear_counts" not in bot.in_memory_storage:
                 bot.in_memory_storage["swear_counts"] = {}
                 
