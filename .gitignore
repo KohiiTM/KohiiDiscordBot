@@ -28,3 +28,5 @@ docker-compose.yml
 logs/
 
 swear_words.txt
+swear_words2.txt
+bot/swear_jar.py
