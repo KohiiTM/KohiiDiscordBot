@@ -77,6 +77,7 @@ async def load_cogs():
         "cogs.restart",
         "cogs.coffee_collection",
         "cogs.gemini",
+        "cogs.swear_jar",
         
     ]
     for cog in cog_list:
