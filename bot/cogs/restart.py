@@ -9,7 +9,6 @@ class Restart(commands.Cog):
 
     @discord.app_commands.command(name="restart", description="Restarts the bot (requires admin privileges).")
     async def restart(self, interaction: discord.Interaction):
-        """Restarts the bot."""
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message(
                 "You don't have permission to restart the bot.", ephemeral=True

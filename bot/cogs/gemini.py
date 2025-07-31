@@ -57,7 +57,6 @@ class Gemini(commands.Cog):
         return "\n".join(history)
 
     def add_to_history(self, user_id: int, message: str, is_user: bool = True):
-        """Add a message to the conversation history."""
         if user_id not in self.conversation_history:
             self.conversation_history[user_id] = []
         
@@ -78,16 +77,12 @@ class Gemini(commands.Cog):
         await interaction.response.defer()
         
         try:
-            # Get the system prompt for the selected style
             system_prompt = self.styles.get(style.lower(), self.styles["default"])
             
-            # Add the question to conversation history
             self.add_to_history(interaction.user.id, question)
             
-            # Get conversation context
             context = self.get_conversation_context(interaction.user.id)
             
-            # Construct the full prompt with context
             full_prompt = f"{system_prompt}\n\n"
             if context:
                 full_prompt += f"Previous conversation:\n{context}\n\n"
@@ -98,23 +93,17 @@ class Gemini(commands.Cog):
                 contents=full_prompt
             )
             
-            # Add response to conversation history
             self.add_to_history(interaction.user.id, response.text, is_user=False)
             
-            # Start a new session for this user
             self.active_sessions[interaction.user.id] = True
             
-            # Format the response header
             header = f" **{self.model_display}** ({style.capitalize()})\n"
             header += f" **Question:** {question}\n\n"
             
-            # Split response into chunks if needed
             response_chunks = self.split_response(response.text)
             
-            # Send first chunk with header and session instructions
             first_msg = header + "**Answer:**\n" + response_chunks[0]
             if len(first_msg) > 1900:
-                # If header + first chunk is too long, split it
                 await interaction.followup.send(header)
                 await interaction.followup.send("**Answer:**\n" + response_chunks[0])
                 await interaction.followup.send("*Chat session started. Type your next question or 'stop session' to end.*")
@@ -122,7 +111,6 @@ class Gemini(commands.Cog):
                 await interaction.followup.send(first_msg)
                 await interaction.followup.send("*Chat session started. Type your next question or 'stop session' to end.*")
             
-            # Send additional chunks if any
             for i, chunk in enumerate(response_chunks[1:], 2):
                 await interaction.followup.send(f"**Answer (Part {i}):**\n{chunk}")
                 await interaction.followup.send("*Chat session started. Type your next question or 'stop session' to end.*")
@@ -132,33 +120,24 @@ class Gemini(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        # Ignore messages from bots and messages that aren't in a channel
         if message.author.bot or not isinstance(message.channel, discord.TextChannel):
             return
 
-        # Check if user has an active session
         if message.author.id in self.active_sessions and self.active_sessions[message.author.id]:
-            # Check if user wants to stop the session
             if message.content.lower() == "stop session":
                 self.active_sessions[message.author.id] = False
-                # Clear conversation history when session ends
                 if message.author.id in self.conversation_history:
                     del self.conversation_history[message.author.id]
                 await message.channel.send("Chat session ended. Use `/ask_kohii` to start a new one")
                 return
 
-            # Process the message as a follow-up question
             try:
-                # Send thinking message
                 thinking_msg = await message.channel.send("Pondering...")
                 
-                # Add the question to conversation history
                 self.add_to_history(message.author.id, message.content)
                 
-                # Get conversation context
                 context = self.get_conversation_context(message.author.id)
                 
-                # Construct the full prompt with context
                 full_prompt = f"Previous conversation:\n{context}\n\nCurrent question: {message.content}"
                 
                 response = self.client.models.generate_content(
@@ -166,10 +145,8 @@ class Gemini(commands.Cog):
                     contents=full_prompt
                 )
                 
-                # Add response to conversation history
                 self.add_to_history(message.author.id, response.text, is_user=False)
                 
-                # Split response into chunks if needed
                 response_chunks = self.split_response(response.text)
                 
                 await thinking_msg.delete()

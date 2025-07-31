@@ -9,7 +9,6 @@ import requests
 from typing import Optional, Dict, Any
 
 
-# Load environment variables
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 MONGO_USERNAME = os.getenv("MONGO_USERNAME")
@@ -19,7 +18,6 @@ MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
 mongo_client: Optional[MongoClient] = None
 use_mongodb = False
 
-# Try to connect to MongoDB if credentials are available
 if MONGO_USERNAME and MONGO_PASSWORD:
     try:
         MONGO_URI = (
@@ -40,15 +38,14 @@ bot = commands.Bot(command_prefix='/', intents=intents)
 
 bot.mongo_client = mongo_client
 bot.use_mongodb = use_mongodb
-bot.in_memory_storage = {}  # In-memory storage as fallback
-
+bot.in_memory_storage = {}  
 
 @bot.tree.command(name="shutdown", description="Gracefully shuts down the bot.")
 async def shutdown(interaction: discord.Interaction):
-    bot_owner_id = 696391065317408778  # Replace with your Discord user ID
+    bot_owner_id = 696391065317408778  
     if interaction.user.id == bot_owner_id:
         await interaction.response.send_message("Shutting down the bot. Goodbye! 👋")
-        await bot.close()  # Gracefully close the bot connection
+        await bot.close() 
     else:
         await interaction.response.send_message(
             "You do not have permission to shut down the bot.", ephemeral=True
@@ -70,7 +67,6 @@ async def on_disconnect():
         mongo_client.close()
         print("MongoDB connection closed.")
 
-# Load bot cogs
 async def load_cogs():
     cog_list = [
         "cogs.ping",
@@ -100,7 +96,6 @@ async def main():
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
     finally:
-        # Ensure MongoDB connection is closed on exit
         if mongo_client:
             mongo_client.close()
             print("MongoDB connection closed on exit.")

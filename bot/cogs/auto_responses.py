@@ -12,20 +12,16 @@ class AutoResponses(commands.Cog):
         self.session = None
     
     async def cog_load(self):
-        # Create an aiohttp session when the cog loads
         self.session = aiohttp.ClientSession()
     
     async def cog_unload(self):
-        # Close the session when the cog unloads
         if self.session:
             await self.session.close()
 
     async def get_random_gif(self, search_term, limit=10):
-        """Fetch a random GIF related to the search term using Tenor API"""
         if not self.session:
             self.session = aiohttp.ClientSession()
             
-        # Tenor API
         url = f"https://tenor.googleapis.com/v2/search?q={search_term}&key={self.tenor_api_key}&limit={limit}"
         
         try:
@@ -35,9 +31,7 @@ class AutoResponses(commands.Cog):
                     results = data.get("results", [])
                     
                     if results:
-                        # Pick a random GIF from the results
                         random_gif = random.choice(results)
-                        # Get the URL from the media formats
                         gif_url = random_gif["media_formats"]["gif"]["url"]
                         return gif_url
                     else:
