@@ -33,6 +33,7 @@ if MONGO_USERNAME and MONGO_PASSWORD:
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
 
 bot = commands.Bot(command_prefix='/', intents=intents)
 
@@ -78,6 +79,7 @@ async def load_cogs():
         "cogs.coffee_collection",
         "cogs.gemini",
         "cogs.swear_jar",
+        "cogs.welcome",
         
     ]
     for cog in cog_list:
