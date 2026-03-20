@@ -28,3 +28,4 @@ docker-compose.yml
 logs/
 
 swear_words.txt
+swear_counts.json
