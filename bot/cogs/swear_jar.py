@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 from datetime import datetime
 from typing import Dict, List, Any
 import re
@@ -100,35 +101,39 @@ class SwearJar(commands.Cog):
             self.update_user_count(message.author.id, str(message.author), swear_count)
             new_total = self.get_user_count(message.author.id)
             await message.channel.send(f"{message.author.display_name.lower()}, your swear jar count is now {new_total}.")
-    
-    @commands.command(name="swearcount")
-    async def swear_count(self, ctx, user: discord.Member = None):
-        target_user = user if user else ctx.author
+
+    # --- SLASH COMMANDS BELOW ---
+
+    @app_commands.command(name="swearcount", description="Show your or another user's swear count.")
+    async def swear_count(self, interaction: discord.Interaction, user: discord.Member = None):
+        target_user = user if user else interaction.user
         count = self.get_user_count(target_user.id)
         if count == 0:
-            await ctx.send(f"{target_user.display_name} has a clean mouth! 😇")
+            await interaction.response.send_message(f"{target_user.display_name} has a clean mouth! 😇")
         else:
-            await ctx.send(f"{target_user.display_name} has used {count} swear word{'s' if count != 1 else ''} 🤬")
-    
-    @commands.command(name="swearleaderboard", aliases=["swearboard"])
-    async def swear_leaderboard(self, ctx, limit: int = 10):
+            await interaction.response.send_message(f"{target_user.display_name} has used {count} swear word{'s' if count != 1 else ''} 🤬")
+
+    @app_commands.command(name="swearleaderboard", description="Show the top swearers.")
+    async def swear_leaderboard(self, interaction: discord.Interaction, limit: int = 10):
         if limit > 20: limit = 20
         leaderboard = self.get_leaderboard(limit)
         if not leaderboard:
-            await ctx.send("Everyone has clean mouths! 😇")
+            await interaction.response.send_message("Everyone has clean mouths! 😇")
             return
         embed = discord.Embed(title="🤬 Swear Jar Leaderboard", color=discord.Color.red())
         for i, entry in enumerate(leaderboard, 1):
             emoji = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
             embed.add_field(name=f"{emoji} {entry['username']}", value=f"{entry['count']} swear words", inline=False)
-        await ctx.send(embed=embed)
-    
-    @commands.command(name="reloadswears")
-    @commands.has_permissions(administrator=True)
-    async def reload_swears(self, ctx):
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="reloadswears", description="Reload the swear words list (admin only).")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def reload_swears(self, interaction: discord.Interaction):
         old_count = len(self.swear_words)
         self.swear_words = self.load_swear_words()
-        await ctx.send(f"Reloaded swear words list: {old_count} → {len(self.swear_words)} words")
+        await interaction.response.send_message(f"Reloaded swear words list: {old_count} → {len(self.swear_words)} words")
+
+    
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(SwearJar(bot))
